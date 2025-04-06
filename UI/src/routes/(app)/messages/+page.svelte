@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte"
+  import { onMount, tick } from "svelte"
   const API_URL = "https://localhost:44333/api/messages"
   let messages = []
   let error = ""
@@ -8,6 +8,7 @@
   let editingData = { text: "" }
   let usersList = []
   let openDropdownId = null
+  let messagesArea
   $: sortedMessages = messages
     .slice()
     .sort((a, b) => new Date(a.createdOn) - new Date(b.createdOn))
@@ -49,6 +50,10 @@
         return
       }
       messages = await res.json()
+      await tick()
+      if (messagesArea) {
+        messagesArea.scrollTop = messagesArea.scrollHeight
+      }
     } catch (err) {
       error = `Error: ${err.message}`
     }
@@ -147,7 +152,7 @@
     />
   </div>
   <div class="content">
-    <div class="messages-area">
+    <div class="messages-area" bind:this={messagesArea}>
       {#each groupedMessages as group}
         <div class="group-header">{group.date}</div>
         {#each group.messages as message (message.id)}
@@ -222,7 +227,7 @@
         type="text"
         bind:value={newMessage.text}
         placeholder="Type your message here"
-        on:keydown={handleSendKeydown}
+        on:keyup={handleSendKeydown}
       />
       <button on:click={sendMessage}>Send</button>
     </div>
@@ -254,6 +259,11 @@
     border: 1px solid #ddd;
     padding: 1rem;
     box-sizing: border-box;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  .messages-area::-webkit-scrollbar {
+    display: none;
   }
   .group-header {
     text-align: center;
