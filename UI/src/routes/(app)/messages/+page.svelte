@@ -1,21 +1,17 @@
 <script>
   import { onMount } from "svelte"
 
-  // Update this with the correct API URL
   const API_URL = "https://localhost:44333/api/messages"
 
-  // The messages returned by the API (which include Id, Guid, UserId, Text, ChannelId, etc.)
   let messages = []
   let error = ""
 
-  // New message fields matching the CreateMessage model
   let newMessage = {
     userId: "",
     text: "",
     channelId: "",
   }
 
-  // For editing an existing message, we'll store the current message and a copy of the editable fields
   let editingMessage = null
   let editingData = {
     userId: "",
@@ -23,7 +19,21 @@
     channelId: "",
   }
 
-  // Fetch messages from the API on component mount
+  let usersList = []
+
+  async function fetchUsers() {
+    try {
+      const res = await fetch("https://localhost:44333/api/users")
+      if (!res.ok) {
+        error = `Failed to fetch users: ${res.status}`
+        return
+      }
+      usersList = await res.json()
+    } catch (err) {
+      error = `Error: ${err.message}`
+    }
+  }
+
   async function fetchMessages() {
     try {
       const res = await fetch(API_URL)
@@ -39,11 +49,10 @@
 
   onMount(() => {
     fetchMessages()
+    fetchUsers()
   })
 
-  // Create a new message using the CreateMessage model
   async function sendMessage() {
-    // Ensure required fields are not empty (basic client-side validation)
     if (!newMessage.userId || !newMessage.text.trim() || !newMessage.channelId)
       return
 
@@ -69,7 +78,6 @@
     }
   }
 
-  // Enter edit mode for a message and copy its values into editingData
   function startEditing(message) {
     editingMessage = message
     editingData = {
@@ -79,7 +87,6 @@
     }
   }
 
-  // Update a message using the UpdateMessage model via PUT endpoint
   async function updateMessage() {
     if (
       !editingData.userId ||
@@ -110,7 +117,6 @@
     }
   }
 
-  // Delete a message (only the id is needed)
   async function deleteMessage(id) {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
@@ -134,15 +140,18 @@
     <p class="error">{error}</p>
   {/if}
 
-  <!-- Section to send a new message -->
   <section>
     <h2>Send a New Message</h2>
     <div>
-      <input
-        type="number"
-        bind:value={newMessage.userId}
-        placeholder="User ID"
-      />
+      <select bind:value={newMessage.userId}>
+        <option value="" disabled selected>Select a User</option>
+        {#each usersList as user}
+          <option value={user.id}>
+            {user.firstName}
+            {user.lastName} ({user.email})
+          </option>
+        {/each}
+      </select>
     </div>
     <div>
       <input
@@ -161,7 +170,6 @@
     <button on:click={sendMessage}>Send</button>
   </section>
 
-  <!-- Section displaying all messages -->
   <section>
     <h2>All Messages</h2>
     {#if messages.length === 0}
@@ -171,13 +179,16 @@
         {#each messages as message (message.id)}
           <li>
             {#if editingMessage && editingMessage.id === message.id}
-              <!-- Edit mode: allow updating all fields -->
               <div>
-                <input
-                  type="number"
-                  bind:value={editingData.userId}
-                  placeholder="User ID"
-                />
+                <select bind:value={editingData.userId}>
+                  <option value="" disabled>Select a User</option>
+                  {#each usersList as user}
+                    <option value={user.id}>
+                      {user.firstName}
+                      {user.lastName} ({user.email})
+                    </option>
+                  {/each}
+                </select>
               </div>
               <div>
                 <input
@@ -196,7 +207,6 @@
               <button on:click={updateMessage}>Update</button>
               <button on:click={() => (editingMessage = null)}>Cancel</button>
             {:else}
-              <!-- Display mode -->
               <div>
                 <strong>Message:</strong>
                 {message.text}
@@ -231,7 +241,8 @@
     font-family: Arial, sans-serif;
   }
 
-  input {
+  input,
+  select {
     padding: 0.5rem;
     margin: 0.25rem 0;
     width: 100%;
