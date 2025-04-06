@@ -7,9 +7,14 @@
   let editingMessage = null
   let editingData = { userId: "", text: "", channelId: "" }
   let usersList = []
+  let openDropdownId = null
   $: sortedMessages = messages
     .slice()
     .sort((a, b) => new Date(a.createdOn) - new Date(b.createdOn))
+  function getUserName(userId) {
+    const user = usersList.find((u) => u.id === userId)
+    return user ? `${user.firstName} ${user.lastName}` : "Unknown User"
+  }
   async function fetchUsers() {
     try {
       const res = await fetch("https://localhost:44333/api/users")
@@ -151,21 +156,49 @@
               placeholder="Channel ID"
             />
             <button on:click={updateMessage}>Update</button>
-            <button on:click={() => (editingMessage = null)}>Cancel</button>
+            <button
+              on:click={() => {
+                editingMessage = null
+              }}>Cancel</button
+            >
           {:else}
-            <div><strong>Message:</strong> {message.text}</div>
-            <div>
-              <small
-                >User ID: {message.userId} | Channel ID: {message.channelId}</small
+            <div class="message-header">
+              <div class="dropdown">
+                <button
+                  class="dropdown-toggle"
+                  on:click={() =>
+                    (openDropdownId =
+                      openDropdownId === message.id ? null : message.id)}
+                  >▼</button
+                >
+                {#if openDropdownId === message.id}
+                  <div class="dropdown-menu">
+                    <button
+                      on:click={() => {
+                        startEditing(message)
+                        openDropdownId = null
+                      }}>Edit</button
+                    >
+                    <button
+                      on:click={() => {
+                        deleteMessage(message.id)
+                        openDropdownId = null
+                      }}>Delete</button
+                    >
+                  </div>
+                {/if}
+              </div>
+              <strong
+                >{getUserName(message.userId)}
+                {new Date(message.createdOn).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}</strong
               >
             </div>
-            <div>
-              <small
-                >Created: {new Date(message.createdOn).toLocaleString()}</small
-              >
+            <div class="message-body">
+              {message.text}
             </div>
-            <button on:click={() => startEditing(message)}>Edit</button>
-            <button on:click={() => deleteMessage(message.id)}>Delete</button>
           {/if}
         </div>
       {/each}
@@ -212,6 +245,9 @@
     padding: 1rem;
     border-top: 1px solid #ddd;
     box-sizing: border-box;
+    position: sticky;
+    bottom: 0;
+    background: white;
   }
   .message-input input {
     flex: 1;
@@ -224,12 +260,48 @@
     margin-bottom: 1rem;
   }
   .sidebar select,
-  .sidebar input,
-  .edit select,
-  .edit input {
+  .sidebar input {
     margin-bottom: 1rem;
     padding: 0.5rem;
     width: 100%;
     box-sizing: border-box;
+  }
+  .message-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .dropdown {
+    position: relative;
+    margin-right: 0.5rem;
+  }
+  .dropdown-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .dropdown-menu {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    background: white;
+    border: 1px solid #ddd;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+  }
+  .dropdown-menu button {
+    padding: 0.5rem 1rem;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .dropdown-menu button:hover {
+    background: #f0f0f0;
+  }
+  .message-body {
+    margin-bottom: 0.5rem;
   }
 </style>
