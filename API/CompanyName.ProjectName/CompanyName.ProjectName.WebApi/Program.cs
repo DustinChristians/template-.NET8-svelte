@@ -48,6 +48,17 @@ builder.Services.AddControllers(setupAction =>
     };
 });
 
+// New code: Register CORS policy for development mode only.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policyBuilder =>
+    {
+        policyBuilder.AllowAnyOrigin()
+                     .AllowAnyMethod()
+                     .AllowAnyHeader();
+    });
+});
+
 // For catching, logging and returning appropriate controller related errors
 builder.Services.AddScoped<ApiExceptionFilter>();
 
@@ -68,10 +79,7 @@ if (app.Environment.IsDevelopment())
 
     // Allow cross origin resource sharing for testing all development requests.
     // This should not be done for a production build.
-    app.UseCors(builder =>
-    {
-        builder.WithOrigins("*");
-    });
+    app.UseCors("AllowAll");  // Updated: Using named policy "AllowAll" in development.
 }
 else
 {
