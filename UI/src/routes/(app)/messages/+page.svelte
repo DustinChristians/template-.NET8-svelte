@@ -5,12 +5,26 @@
   let error = ""
   let newMessage = { userId: "", text: "", channelId: "" }
   let editingMessage = null
-  let editingData = { userId: "", text: "", channelId: "" }
+  let editingData = { text: "" }
   let usersList = []
   let openDropdownId = null
   $: sortedMessages = messages
     .slice()
     .sort((a, b) => new Date(a.createdOn) - new Date(b.createdOn))
+  function groupMessagesByDate(messages) {
+    const groups = []
+    let currentGroup = null
+    messages.forEach((message) => {
+      const date = new Date(message.createdOn).toLocaleDateString()
+      if (!currentGroup || currentGroup.date !== date) {
+        currentGroup = { date, messages: [] }
+        groups.push(currentGroup)
+      }
+      currentGroup.messages.push(message)
+    })
+    return groups
+  }
+  $: groupedMessages = groupMessagesByDate(sortedMessages)
   function getUserName(userId) {
     const user = usersList.find((u) => u.id === userId)
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User"
@@ -68,27 +82,21 @@
   }
   function startEditing(message) {
     editingMessage = message
-    editingData = {
-      userId: message.userId,
-      text: message.text,
-      channelId: message.channelId,
-    }
+    editingData.text = message.text
+  }
+  function handleEditKeydown(event) {
+    if (event.key === "Enter") updateMessage()
   }
   async function updateMessage() {
-    if (
-      !editingData.userId ||
-      !editingData.text.trim() ||
-      !editingData.channelId
-    )
-      return
+    if (!editingData.text.trim()) return
     try {
       const res = await fetch(`${API_URL}/${editingMessage.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: Number(editingData.userId),
+          userId: editingMessage.userId,
           text: editingData.text,
-          channelId: Number(editingData.channelId),
+          channelId: editingMessage.channelId,
         }),
       })
       if (!res.ok) {
@@ -96,7 +104,7 @@
         return
       }
       editingMessage = null
-      editingData = { userId: "", text: "", channelId: "" }
+      editingData.text = ""
       await fetchMessages()
     } catch (err) {
       error = `Error: ${err.message}`
@@ -112,6 +120,12 @@
       await fetchMessages()
     } catch (err) {
       error = `Error: ${err.message}`
+    }
+  }
+  function handleSendKeydown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      sendMessage()
     }
   }
 </script>
@@ -134,73 +148,73 @@
   </div>
   <div class="content">
     <div class="messages-area">
-      {#each sortedMessages as message (message.id)}
-        <div class="message">
-          {#if editingMessage && editingMessage.id === message.id}
-            <select bind:value={editingData.userId}>
-              <option value="" disabled>Select a User</option>
-              {#each usersList as user}
-                <option value={user.id}
-                  >{user.firstName} {user.lastName} ({user.email})</option
+      {#each groupedMessages as group}
+        <div class="group-header">{group.date}</div>
+        {#each group.messages as message (message.id)}
+          <div class="message">
+            {#if editingMessage && editingMessage.id === message.id}
+              <div class="message-header">
+                <strong
+                  >{getUserName(message.userId)}
+                  {new Date(message.createdOn).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}</strong
                 >
-              {/each}
-            </select>
-            <input
-              type="text"
-              bind:value={editingData.text}
-              placeholder="Text"
-            />
-            <input
-              type="number"
-              bind:value={editingData.channelId}
-              placeholder="Channel ID"
-            />
-            <button on:click={updateMessage}>Update</button>
-            <button
-              on:click={() => {
-                editingMessage = null
-              }}>Cancel</button
-            >
-          {:else}
-            <div class="message-header">
-              <div class="dropdown">
-                <button
-                  class="dropdown-toggle"
-                  on:click={() =>
-                    (openDropdownId =
-                      openDropdownId === message.id ? null : message.id)}
-                  >▼</button
-                >
-                {#if openDropdownId === message.id}
-                  <div class="dropdown-menu">
-                    <button
-                      on:click={() => {
-                        startEditing(message)
-                        openDropdownId = null
-                      }}>Edit</button
-                    >
-                    <button
-                      on:click={() => {
-                        deleteMessage(message.id)
-                        openDropdownId = null
-                      }}>Delete</button
-                    >
-                  </div>
-                {/if}
               </div>
-              <strong
-                >{getUserName(message.userId)}
-                {new Date(message.createdOn).toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}</strong
-              >
-            </div>
-            <div class="message-body">
-              {message.text}
-            </div>
-          {/if}
-        </div>
+              <div class="message-body">
+                <input
+                  type="text"
+                  bind:value={editingData.text}
+                  placeholder="Text"
+                  on:keydown={handleEditKeydown}
+                />
+                <button on:click={updateMessage}>Save</button>
+                <button
+                  on:click={() => {
+                    editingMessage = null
+                  }}>Cancel</button
+                >
+              </div>
+            {:else}
+              <div class="message-header">
+                <div class="dropdown">
+                  <button
+                    class="dropdown-toggle"
+                    on:click={() =>
+                      (openDropdownId =
+                        openDropdownId === message.id ? null : message.id)}
+                    >▼</button
+                  >
+                  {#if openDropdownId === message.id}
+                    <div class="dropdown-menu">
+                      <button
+                        on:click={() => {
+                          startEditing(message)
+                          openDropdownId = null
+                        }}>Edit</button
+                      >
+                      <button
+                        on:click={() => {
+                          deleteMessage(message.id)
+                          openDropdownId = null
+                        }}>Delete</button
+                      >
+                    </div>
+                  {/if}
+                </div>
+                <strong
+                  >{getUserName(message.userId)}
+                  {new Date(message.createdOn).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}</strong
+                >
+              </div>
+              <div class="message-body">{message.text}</div>
+            {/if}
+          </div>
+        {/each}
       {/each}
     </div>
     <div class="message-input">
@@ -208,6 +222,7 @@
         type="text"
         bind:value={newMessage.text}
         placeholder="Type your message here"
+        on:keydown={handleSendKeydown}
       />
       <button on:click={sendMessage}>Send</button>
     </div>
@@ -239,6 +254,13 @@
     border: 1px solid #ddd;
     padding: 1rem;
     box-sizing: border-box;
+  }
+  .group-header {
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+    margin: 1rem 0;
+    padding-bottom: 0.5rem;
+    font-weight: bold;
   }
   .message-input {
     display: flex;
