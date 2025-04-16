@@ -10,10 +10,12 @@ a {
 .authBtn {
   @apply btn;
 }
+
 button[disabled].authBtn {
   font-size: 0.001px;
   filter: brightness(65%);
 }
+
 button[disabled].authBtn::before {
   font-size: 14px;
   content: "Loading...";

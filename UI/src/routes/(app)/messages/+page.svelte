@@ -3,7 +3,7 @@
   const API_URL = "https://localhost:44333/api/messages"
   let messages = []
   let error = ""
-  let newMessage = { userId: "", text: "", channelId: "" }
+  let newMessage = { userId: "", text: "", channelId: 1 }
   let editingMessage = null
   let editingData = { text: "" }
   let usersList = []
@@ -12,6 +12,11 @@
   $: sortedMessages = messages
     .slice()
     .sort((a, b) => new Date(a.createdOn) - new Date(b.createdOn))
+  $: displayedMessages = newMessage.channelId
+    ? sortedMessages.filter(
+        (m) => Number(m.channelId) === Number(newMessage.channelId),
+      )
+    : []
   function groupMessagesByDate(messages) {
     const groups = []
     let currentGroup = null
@@ -25,7 +30,7 @@
     })
     return groups
   }
-  $: groupedMessages = groupMessagesByDate(sortedMessages)
+  $: groupedMessages = groupMessagesByDate(displayedMessages)
   function getUserName(userId) {
     const user = usersList.find((u) => u.id === userId)
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User"
@@ -38,6 +43,9 @@
         return
       }
       usersList = await res.json()
+      if (usersList.length > 0 && !newMessage.userId) {
+        newMessage.userId = usersList[0].id
+      }
     } catch (err) {
       error = `Error: ${err.message}`
     }
@@ -137,15 +145,19 @@
 
 <main class="container">
   <div class="sidebar">
-    <select bind:value={newMessage.userId}>
-      <option value="" disabled selected>Select a User</option>
+    <label for="user-select">User</label>
+    <select id="user-select" bind:value={newMessage.userId}>
+      <option value="" disabled>Select a User</option>
       {#each usersList as user}
-        <option value={user.id}
-          >{user.firstName} {user.lastName} ({user.email})</option
-        >
+        <option value={user.id}>
+          {user.firstName}
+          {user.lastName} ({user.email})
+        </option>
       {/each}
     </select>
+    <label for="channel-input">Channel</label>
     <input
+      id="channel-input"
       type="number"
       bind:value={newMessage.channelId}
       placeholder="Channel ID"
@@ -159,13 +171,13 @@
           <div class="message">
             {#if editingMessage && editingMessage.id === message.id}
               <div class="message-header">
-                <strong
-                  >{getUserName(message.userId)}
+                <strong>
+                  {getUserName(message.userId)}{" "}
                   {new Date(message.createdOn).toLocaleTimeString("en-US", {
                     hour: "numeric",
                     minute: "2-digit",
-                  })}</strong
-                >
+                  })}
+                </strong>
               </div>
               <div class="message-body">
                 <input
@@ -178,8 +190,10 @@
                 <button
                   on:click={() => {
                     editingMessage = null
-                  }}>Cancel</button
+                  }}
                 >
+                  Cancel
+                </button>
               </div>
             {:else}
               <div class="message-header">
@@ -189,32 +203,37 @@
                     on:click={() =>
                       (openDropdownId =
                         openDropdownId === message.id ? null : message.id)}
-                    >▼</button
                   >
+                    ▼
+                  </button>
                   {#if openDropdownId === message.id}
                     <div class="dropdown-menu">
                       <button
                         on:click={() => {
                           startEditing(message)
                           openDropdownId = null
-                        }}>Edit</button
+                        }}
                       >
+                        Edit
+                      </button>
                       <button
                         on:click={() => {
                           deleteMessage(message.id)
                           openDropdownId = null
-                        }}>Delete</button
+                        }}
                       >
+                        Delete
+                      </button>
                     </div>
                   {/if}
                 </div>
-                <strong
-                  >{getUserName(message.userId)}
+                <strong>
+                  {getUserName(message.userId)}{" "}
                   {new Date(message.createdOn).toLocaleTimeString("en-US", {
                     hour: "numeric",
                     minute: "2-digit",
-                  })}</strong
-                >
+                  })}
+                </strong>
               </div>
               <div class="message-body">{message.text}</div>
             {/if}
@@ -248,6 +267,17 @@
     flex-direction: column;
     justify-content: flex-start;
   }
+  .sidebar label {
+    margin-bottom: 0.25rem;
+    font-weight: bold;
+  }
+  .sidebar select,
+  .sidebar input {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
   .content {
     width: 80%;
     display: flex;
@@ -259,8 +289,9 @@
     border: 1px solid #ddd;
     padding: 1rem;
     box-sizing: border-box;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE 10+ */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background: #f0f0f0;
   }
   .messages-area::-webkit-scrollbar {
     display: none;
@@ -272,31 +303,10 @@
     padding-bottom: 0.5rem;
     font-weight: bold;
   }
-  .message-input {
-    display: flex;
-    padding: 1rem;
-    border-top: 1px solid #ddd;
-    box-sizing: border-box;
-    position: sticky;
-    bottom: 0;
-    background: white;
-  }
-  .message-input input {
-    flex: 1;
-    padding: 0.5rem;
-  }
-  .message-input button {
-    margin-left: 0.5rem;
-  }
   .message {
     margin-bottom: 1rem;
-  }
-  .sidebar select,
-  .sidebar input {
-    margin-bottom: 1rem;
     padding: 0.5rem;
-    width: 100%;
-    box-sizing: border-box;
+    border-radius: 4px;
   }
   .message-header {
     display: flex;
@@ -335,5 +345,21 @@
   }
   .message-body {
     margin-bottom: 0.5rem;
+  }
+  .message-input {
+    display: flex;
+    padding: 1rem;
+    border-top: 1px solid #ddd;
+    box-sizing: border-box;
+    position: sticky;
+    bottom: 0;
+    background: white;
+  }
+  .message-input input {
+    flex: 1;
+    padding: 0.5rem;
+  }
+  .message-input button {
+    margin-left: 0.5rem;
   }
 </style>
