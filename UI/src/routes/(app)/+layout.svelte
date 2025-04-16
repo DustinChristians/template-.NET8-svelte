@@ -72,8 +72,8 @@
 
 <!-- Spacer grows so the footer can be at bottom on short pages -->
 <div class="flex-grow"></div>
-<div class="">
-  <div class="border-t max-w-[1000px] mx-auto"></div>
+<div class="mt-10">
+  <div class="border-t mx-auto"></div>
   <footer
     class="footer p-10 gap-x-48 lg:gap-x-64 xl:gap-x-96 place-content-center text-base"
   >

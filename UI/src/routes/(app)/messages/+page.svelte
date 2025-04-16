@@ -9,14 +9,17 @@
   let usersList = []
   let openDropdownId = null
   let messagesArea
+
   $: sortedMessages = messages
     .slice()
     .sort((a, b) => new Date(a.createdOn) - new Date(b.createdOn))
+
   $: displayedMessages = newMessage.channelId
     ? sortedMessages.filter(
         (m) => Number(m.channelId) === Number(newMessage.channelId),
       )
     : []
+
   function groupMessagesByDate(messages) {
     const groups = []
     let currentGroup = null
@@ -31,10 +34,12 @@
     return groups
   }
   $: groupedMessages = groupMessagesByDate(displayedMessages)
+
   function getUserName(userId) {
     const user = usersList.find((u) => u.id === userId)
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User"
   }
+
   async function fetchUsers() {
     try {
       const res = await fetch("https://localhost:44333/api/users")
@@ -50,6 +55,7 @@
       error = `Error: ${err.message}`
     }
   }
+
   async function fetchMessages() {
     try {
       const res = await fetch(API_URL)
@@ -66,10 +72,12 @@
       error = `Error: ${err.message}`
     }
   }
+
   onMount(() => {
     fetchMessages()
     fetchUsers()
   })
+
   async function sendMessage() {
     if (!newMessage.userId || !newMessage.text.trim() || !newMessage.channelId)
       return
@@ -93,13 +101,16 @@
       error = `Error: ${err.message}`
     }
   }
+
   function startEditing(message) {
     editingMessage = message
     editingData.text = message.text
   }
+
   function handleEditKeydown(event) {
     if (event.key === "Enter") updateMessage()
   }
+
   async function updateMessage() {
     if (!editingData.text.trim()) return
     try {
@@ -123,6 +134,7 @@
       error = `Error: ${err.message}`
     }
   }
+
   async function deleteMessage(id) {
     try {
       const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" })
@@ -135,6 +147,7 @@
       error = `Error: ${err.message}`
     }
   }
+
   function handleSendKeydown(event) {
     if (event.key === "Enter") {
       event.preventDefault()
@@ -143,10 +156,17 @@
   }
 </script>
 
-<main class="container">
-  <div class="sidebar">
-    <label for="user-select">User</label>
-    <select id="user-select" bind:value={newMessage.userId}>
+<main class="flex h-screen p-4">
+  <!-- Sidebar -->
+  <aside class="w-1/5 pr-4 flex flex-col space-y-4">
+    <label class="label">
+      <span class="label-text font-bold">User</span>
+    </label>
+    <select
+      id="user-select"
+      bind:value={newMessage.userId}
+      class="select select-bordered w-full"
+    >
       <option value="" disabled>Select a User</option>
       {#each usersList as user}
         <option value={user.id}>
@@ -155,211 +175,131 @@
         </option>
       {/each}
     </select>
-    <label for="channel-input">Channel</label>
+
+    <label class="label">
+      <span class="label-text font-bold">Channel</span>
+    </label>
     <input
       id="channel-input"
       type="number"
       bind:value={newMessage.channelId}
       placeholder="Channel ID"
+      class="input input-bordered w-full"
     />
-  </div>
-  <div class="content">
-    <div class="messages-area" bind:this={messagesArea}>
+  </aside>
+
+  <!-- Content -->
+  <section class="flex-1 flex flex-col">
+    <!-- Messages Area -->
+    <div
+      class="flex-1 overflow-y-auto bg-secondary p-4 space-y-4"
+      bind:this={messagesArea}
+    >
       {#each groupedMessages as group}
-        <div class="group-header">{group.date}</div>
+        <div class="text-center font-bold border-b border-gray-300 pb-2 my-4">
+          {group.date}
+        </div>
+
         {#each group.messages as message (message.id)}
-          <div class="message">
-            {#if editingMessage && editingMessage.id === message.id}
-              <div class="message-header">
-                <strong>
+          {#if editingMessage && editingMessage.id === message.id}
+            <!-- Edit Mode -->
+            <div class="p-4 bg-white rounded-lg shadow">
+              <div class="flex items-center mb-2">
+                <strong class="font-semibold">
                   {getUserName(message.userId)}{" "}
-                  {new Date(message.createdOn).toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
+                  <span class="text-sm text-gray-500 ml-1">
+                    {new Date(message.createdOn).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </strong>
               </div>
-              <div class="message-body">
+              <div class="flex space-x-2">
                 <input
                   type="text"
                   bind:value={editingData.text}
                   placeholder="Text"
                   on:keydown={handleEditKeydown}
+                  class="input input-bordered flex-1"
                 />
-                <button on:click={updateMessage}>Save</button>
+                <button on:click={updateMessage} class="btn btn-sm btn-primary">
+                  Save
+                </button>
                 <button
-                  on:click={() => {
-                    editingMessage = null
-                  }}
+                  on:click={() => (editingMessage = null)}
+                  class="btn btn-sm"
                 >
                   Cancel
                 </button>
               </div>
-            {:else}
-              <div class="message-header">
-                <div class="dropdown">
+            </div>
+          {:else}
+            <!-- Display Mode with down‑arrow trigger -->
+            <div class="p-4 bg-white rounded-lg shadow">
+              <div class="flex items-center mb-2">
+                <strong class="font-semibold">
+                  {getUserName(message.userId)}
+                  <span class="text-sm text-gray-500 ml-1">
+                    {new Date(message.createdOn).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </strong>
+
+                <div class="dropdown inline-block relative ml-1">
                   <button
-                    class="dropdown-toggle"
+                    class="btn btn-ghost btn-xs p-0"
+                    aria-label="Actions"
                     on:click={() =>
                       (openDropdownId =
                         openDropdownId === message.id ? null : message.id)}
                   >
-                    ▼
+                    ▾
                   </button>
+
                   {#if openDropdownId === message.id}
-                    <div class="dropdown-menu">
-                      <button
-                        on:click={() => {
-                          startEditing(message)
-                          openDropdownId = null
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        on:click={() => {
-                          deleteMessage(message.id)
-                          openDropdownId = null
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <ul
+                      class="absolute left-0 top-full mt-1 menu p-2 shadow bg-base-100 rounded-box w-32 z-10"
+                    >
+                      <li>
+                        <a
+                          on:click={() => {
+                            startEditing(message)
+                            openDropdownId = null
+                          }}>Edit</a
+                        >
+                      </li>
+                      <li>
+                        <a
+                          on:click={() => {
+                            deleteMessage(message.id)
+                            openDropdownId = null
+                          }}>Delete</a
+                        >
+                      </li>
+                    </ul>
                   {/if}
                 </div>
-                <strong>
-                  {getUserName(message.userId)}{" "}
-                  {new Date(message.createdOn).toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </strong>
               </div>
-              <div class="message-body">{message.text}</div>
-            {/if}
-          </div>
+              <div class="mb-2">{message.text}</div>
+            </div>
+          {/if}
         {/each}
       {/each}
     </div>
-    <div class="message-input">
+
+    <!-- Message Input -->
+    <div class="mt-auto flex border-t border-gray-200 py-4 bg-base-100">
       <input
         type="text"
         bind:value={newMessage.text}
         placeholder="Type your message here"
         on:keyup={handleSendKeydown}
+        class="input input-bordered flex-1 mr-2"
       />
-      <button on:click={sendMessage}>Send</button>
+      <button on:click={sendMessage} class="btn btn-primary">Send</button>
     </div>
-  </div>
+  </section>
 </main>
-
-<style>
-  .container {
-    display: flex;
-    height: 100vh;
-    padding: 1rem;
-    box-sizing: border-box;
-  }
-  .sidebar {
-    width: 20%;
-    padding-right: 1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-  }
-  .sidebar label {
-    margin-bottom: 0.25rem;
-    font-weight: bold;
-  }
-  .sidebar select,
-  .sidebar input {
-    margin-bottom: 1rem;
-    padding: 0.5rem;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  .content {
-    width: 80%;
-    display: flex;
-    flex-direction: column;
-  }
-  .messages-area {
-    flex: 1;
-    overflow-y: auto;
-    border: 1px solid #ddd;
-    padding: 1rem;
-    box-sizing: border-box;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    background: #f0f0f0;
-  }
-  .messages-area::-webkit-scrollbar {
-    display: none;
-  }
-  .group-header {
-    text-align: center;
-    border-bottom: 1px solid #ccc;
-    margin: 1rem 0;
-    padding-bottom: 0.5rem;
-    font-weight: bold;
-  }
-  .message {
-    margin-bottom: 1rem;
-    padding: 0.5rem;
-    border-radius: 4px;
-  }
-  .message-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-  .dropdown {
-    position: relative;
-    margin-right: 0.5rem;
-  }
-  .dropdown-toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-  }
-  .dropdown-menu {
-    position: absolute;
-    left: 0;
-    top: 100%;
-    background: white;
-    border: 1px solid #ddd;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-  }
-  .dropdown-menu button {
-    padding: 0.5rem 1rem;
-    text-align: left;
-    background: none;
-    border: none;
-    cursor: pointer;
-  }
-  .dropdown-menu button:hover {
-    background: #f0f0f0;
-  }
-  .message-body {
-    margin-bottom: 0.5rem;
-  }
-  .message-input {
-    display: flex;
-    padding: 1rem;
-    border-top: 1px solid #ddd;
-    box-sizing: border-box;
-    position: sticky;
-    bottom: 0;
-    background: white;
-  }
-  .message-input input {
-    flex: 1;
-    padding: 0.5rem;
-  }
-  .message-input button {
-    margin-left: 0.5rem;
-  }
-</style>
