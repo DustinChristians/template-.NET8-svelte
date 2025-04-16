@@ -159,7 +159,7 @@
 <main class="flex h-screen p-4">
   <!-- Sidebar -->
   <aside class="w-1/5 pr-4 flex flex-col space-y-4">
-    <label class="label">
+    <label for="user-select" class="label">
       <span class="label-text font-bold">User</span>
     </label>
     <select
@@ -176,7 +176,7 @@
       {/each}
     </select>
 
-    <label class="label">
+    <label for="channel-input" class="label">
       <span class="label-text font-bold">Channel</span>
     </label>
     <input
@@ -235,7 +235,6 @@
               </div>
             </div>
           {:else}
-            <!-- Display Mode with down‑arrow trigger -->
             <div class="p-4 bg-white rounded-lg shadow">
               <div class="flex items-center mb-2">
                 <strong class="font-semibold">
@@ -264,20 +263,30 @@
                       class="absolute left-0 top-full mt-1 menu p-2 shadow bg-base-100 rounded-box w-32 z-10"
                     >
                       <li>
-                        <a
+                        <button
+                          type="button"
+                          role="menuitem"
+                          class="w-full text-left"
                           on:click={() => {
                             startEditing(message)
                             openDropdownId = null
-                          }}>Edit</a
+                          }}
                         >
+                          Edit
+                        </button>
                       </li>
                       <li>
-                        <a
+                        <button
+                          type="button"
+                          role="menuitem"
+                          class="w-full text-left"
                           on:click={() => {
                             deleteMessage(message.id)
                             openDropdownId = null
-                          }}>Delete</a
+                          }}
                         >
+                          Delete
+                        </button>
                       </li>
                     </ul>
                   {/if}
